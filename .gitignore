@@ -1,0 +1,25 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Secrets / Local-only files
+.env
+.env.*
+*.local
+*.local.md
+**/*.local.md
+*.key
+*.pem
+assets/profile.json
+assets/sponsor-qr.png
+
+# Build / Release artifacts
+dist/
+build/
+*.zip

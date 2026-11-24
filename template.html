@@ -1,0 +1,1043 @@
+<!-- Template Variables
+
+title: The title of the article
+preferred_link: The best link to associate with the article for linking out.
+
+external_link_label: A localized label for the external link.
+external_link_stripped: The external link minus the scheme. Useful for displaying the external link.
+external_link: The external link of the article if there is one provided by the author.
+
+feed_link_title: The name of the feed associated with this article.
+feed_link: The URL of the feed associated with this article.
+byline: HTML that combines all the authors and links to them if available.
+avatar_src: The image source URL for the feed icon / avatar.
+dateline_style: Either "articleDateline" or "articleDatelineTitle" depending on if the title was populated or not.
+
+datetime_long: Long version of a combined publish date and time.
+datetime_medium: Medium length version of a combined publish date and time.
+datetime_short: Short version of the publish date and time.
+
+date_long: Long version of the publish date.
+date_medium: Medium version of the publish date.
+date_short: Long version of the publish date.
+
+time_long: Long version of the publish time.
+time_medium: Medium version of the publish time.
+time_short: Long version of the publish time.
+
+text_size_class: The size class that the user has selected in Preferences for article text.
+body: The body of the article.
+
+-->
+
+<header class="feedHeader">
+	<h1 class="articleTitle">
+		<a href="[[preferred_link]]" rel="noopener noreferrer" target="_blank">[[title]]</a>
+	</h1>
+
+	<div class="articleMeta">
+		<div class="feedLink">
+			<img src="[[avatar_src]]" class="feedAvatar" alt="" />
+			<a href="[[feed_link]]">[[feed_link_title]]</a>
+			<span class="separator">·</span>
+			<time datetime="[[datetime_short]]">[[datetime_short]]</time>
+		</div>
+	</div>
+
+	<div id="bilingualToolbar" class="bilingual-toolbar" role="region" aria-label="双语对照翻译控制栏">
+		<div class="bilingual-toolbar-left">
+			<select id="biModelSelect" class="bilingual-select" aria-label="选择翻译模型">
+				<option value="deepseek">DeepSeek</option>
+				<option value="gemini">Gemini</option>
+			</select>
+			<button type="button" id="biTranslateBtn" class="bilingual-btn bilingual-btn-primary">翻译全文</button>
+			<button type="button" id="biToggleBtn" class="bilingual-btn" disabled>隐藏译文</button>
+		</div>
+		<div class="bilingual-toolbar-right">
+			<button type="button" id="biSettingsBtn" class="bilingual-btn">API 设置</button>
+		</div>
+	</div>
+</header>
+
+<article class="articleBody [[text_size_class]]">
+	<div id="bodyContainer">[[body]]</div>
+</article>
+
+<div id="biSettingsModal" class="bilingual-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="biModalTitle">
+	<div class="bilingual-modal-card">
+		<div class="bilingual-modal-header">
+			<span id="biModalTitle" class="bilingual-modal-title">双语翻译 API 设置</span>
+			<button type="button" id="biModalCloseBtn" class="bilingual-modal-close" aria-label="关闭">×</button>
+		</div>
+
+		<div class="bilingual-provider-group">
+			<div class="bilingual-provider-title">
+				<span>DeepSeek</span>
+				<span class="bilingual-provider-badge">OpenAI 兼容</span>
+			</div>
+			<div class="bilingual-field">
+				<label for="biDsBaseUrl">Base URL</label>
+				<input type="url" id="biDsBaseUrl" class="bilingual-input" spellcheck="false" autocomplete="off" placeholder="https://api.deepseek.com/v1" />
+			</div>
+			<div class="bilingual-field">
+				<label for="biDsApiKey">API Key</label>
+				<div class="bilingual-input-row">
+					<input type="password" id="biDsApiKey" class="bilingual-input" spellcheck="false" autocomplete="off" placeholder="sk-..." />
+					<button type="button" class="bilingual-btn bilingual-key-toggle" data-target="biDsApiKey">显示</button>
+				</div>
+			</div>
+			<div class="bilingual-field">
+				<label for="biDsModel">Model Name</label>
+				<input type="text" id="biDsModel" class="bilingual-input" spellcheck="false" autocomplete="off" placeholder="deepseek-chat" />
+			</div>
+		</div>
+
+		<div class="bilingual-provider-group">
+			<div class="bilingual-provider-title">
+				<span>Gemini</span>
+				<span class="bilingual-provider-badge">OpenAI 兼容接口</span>
+			</div>
+			<div class="bilingual-field">
+				<label for="biGmBaseUrl">Base URL</label>
+				<input type="url" id="biGmBaseUrl" class="bilingual-input" spellcheck="false" autocomplete="off" placeholder="https://generativelanguage.googleapis.com/v1beta/openai/" />
+			</div>
+			<div class="bilingual-field">
+				<label for="biGmApiKey">API Key</label>
+				<div class="bilingual-input-row">
+					<input type="password" id="biGmApiKey" class="bilingual-input" spellcheck="false" autocomplete="off" placeholder="AQ...." />
+					<button type="button" class="bilingual-btn bilingual-key-toggle" data-target="biGmApiKey">显示</button>
+				</div>
+			</div>
+			<div class="bilingual-field">
+				<label for="biGmModel">Model Name</label>
+				<input type="text" id="biGmModel" class="bilingual-input" spellcheck="false" autocomplete="off" placeholder="gemini-3.8-flash" />
+			</div>
+		</div>
+
+		<div class="bilingual-modal-footer">
+			<button type="button" id="biResetDefaultBtn" class="bilingual-btn">恢复预设</button>
+			<div class="bilingual-modal-actions">
+				<button type="button" id="biCancelSettingsBtn" class="bilingual-btn">取消</button>
+				<button type="button" id="biSaveSettingsBtn" class="bilingual-btn bilingual-btn-primary">保存设置</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+(function () {
+	'use strict';
+
+	const STORAGE_KEYS = {
+		activeProvider: 'nnw_miaoyan_bi_active_provider',
+		deepseekConfig: 'nnw_miaoyan_bi_cfg_deepseek',
+		geminiConfig: 'nnw_miaoyan_bi_cfg_gemini',
+		cachePrefix: 'nnw_miaoyan_bi_cache_v1:',
+		cacheIndex: 'nnw_miaoyan_bi_cache_index_v1'
+	};
+
+	const DEFAULT_CONFIGS = {
+		deepseek: {
+			baseUrl: 'https://api.deepseek.com/v1',
+			apiKey: '',
+			model: 'deepseek-chat'
+		},
+		gemini: {
+			baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+			apiKey: '',
+			model: 'gemini-3.8-flash'
+		}
+	};
+
+	const SYSTEM_PROMPT = '你是一个专业科技与人文翻译专家。将输入文本准确、自然地翻译为简体中文，保留专业术语、代码及人名原貌，直接输出译文，不要包含任何解释或多余前缀。';
+	const CONCURRENCY_LIMIT = 3;
+	const REQUEST_TIMEOUT_MS = 45000;
+	const MAX_CACHED_ARTICLES = 160;
+
+	const memoryStore = Object.create(null);
+
+	const safeStorage = {
+		get(key) {
+			try {
+				const val = window.localStorage.getItem(key);
+				return val !== null ? val : (key in memoryStore ? memoryStore[key] : null);
+			} catch (_) {
+				return key in memoryStore ? memoryStore[key] : null;
+			}
+		},
+		set(key, value) {
+			memoryStore[key] = value;
+			try {
+				window.localStorage.setItem(key, value);
+			} catch (err) {
+				if (err && (err.name === 'QuotaExceededError' || err.code === 22)) {
+					pruneOldestCaches(30);
+					try {
+						window.localStorage.setItem(key, value);
+					} catch (_) {}
+				}
+			}
+		},
+		remove(key) {
+			delete memoryStore[key];
+			try {
+				window.localStorage.removeItem(key);
+			} catch (_) {}
+		}
+	};
+
+	function pruneOldestCaches(removeCount) {
+		try {
+			const rawIndex = window.localStorage.getItem(STORAGE_KEYS.cacheIndex);
+			let keys = rawIndex ? JSON.parse(rawIndex) : [];
+			if (!Array.isArray(keys)) keys = [];
+			const removed = keys.splice(0, removeCount);
+			for (let i = 0; i < removed.length; i++) {
+				window.localStorage.removeItem(removed[i]);
+			}
+			window.localStorage.setItem(STORAGE_KEYS.cacheIndex, JSON.stringify(keys));
+		} catch (_) {}
+	}
+
+	function touchCacheIndex(cacheKey) {
+		try {
+			const raw = safeStorage.get(STORAGE_KEYS.cacheIndex);
+			let keys = raw ? JSON.parse(raw) : [];
+			if (!Array.isArray(keys)) keys = [];
+			const idx = keys.indexOf(cacheKey);
+			if (idx !== -1) keys.splice(idx, 1);
+			keys.push(cacheKey);
+			while (keys.length > MAX_CACHED_ARTICLES) {
+				const oldest = keys.shift();
+				if (oldest) safeStorage.remove(oldest);
+			}
+			safeStorage.set(STORAGE_KEYS.cacheIndex, JSON.stringify(keys));
+		} catch (_) {}
+	}
+
+	function fnv1aHash(str) {
+		let hash = 0x811c9dc5;
+		for (let i = 0; i < str.length; i++) {
+			hash ^= str.charCodeAt(i);
+			hash = Math.imul(hash, 0x01000193);
+		}
+		return (hash >>> 0).toString(36);
+	}
+
+	function getActiveProvider() {
+		const saved = safeStorage.get(STORAGE_KEYS.activeProvider);
+		return saved === 'gemini' ? 'gemini' : 'deepseek';
+	}
+
+	function setActiveProvider(provider) {
+		const normalized = provider === 'gemini' ? 'gemini' : 'deepseek';
+		safeStorage.set(STORAGE_KEYS.activeProvider, normalized);
+		return normalized;
+	}
+
+	function getProviderConfig(provider) {
+		const target = provider === 'gemini' ? 'gemini' : 'deepseek';
+		const storageKey = target === 'gemini' ? STORAGE_KEYS.geminiConfig : STORAGE_KEYS.deepseekConfig;
+		const defaults = DEFAULT_CONFIGS[target];
+		let parsed = null;
+		try {
+			const raw = safeStorage.get(storageKey);
+			if (raw) parsed = JSON.parse(raw);
+		} catch (_) {}
+		return {
+			baseUrl: (parsed && typeof parsed.baseUrl === 'string' && parsed.baseUrl.trim()) ? parsed.baseUrl.trim() : defaults.baseUrl,
+			apiKey: (parsed && typeof parsed.apiKey === 'string' && parsed.apiKey.trim()) ? parsed.apiKey.trim() : defaults.apiKey,
+			model: (parsed && typeof parsed.model === 'string' && parsed.model.trim()) ? parsed.model.trim() : defaults.model
+		};
+	}
+
+	function saveProviderConfig(provider, cfg) {
+		const target = provider === 'gemini' ? 'gemini' : 'deepseek';
+		const storageKey = target === 'gemini' ? STORAGE_KEYS.geminiConfig : STORAGE_KEYS.deepseekConfig;
+		const defaults = DEFAULT_CONFIGS[target];
+		const normalized = {
+			baseUrl: (cfg.baseUrl || '').trim() || defaults.baseUrl,
+			apiKey: (cfg.apiKey || '').trim() || defaults.apiKey,
+			model: (cfg.model || '').trim() || defaults.model
+		};
+		safeStorage.set(storageKey, JSON.stringify(normalized));
+		return normalized;
+	}
+
+	function isEnglishDominant(bodyContainer) {
+		if (!bodyContainer) return false;
+		const clone = bodyContainer.cloneNode(true);
+		clone.querySelectorAll('pre, code, script, style, noscript, svg, math, .bilingual-zh').forEach(el => el.remove());
+
+		let sampledText = '';
+		const blockSelector = 'p, li, blockquote, h1, h2, h3, h4';
+		const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT, null);
+		let node;
+		while ((node = walker.nextNode())) {
+			const parent = node.parentElement;
+			if (parent && parent.closest(blockSelector)) {
+				sampledText += node.nodeValue + ' ';
+			}
+		}
+
+		if (!sampledText.trim()) {
+			sampledText = clone.textContent || '';
+		}
+
+		const withoutUrls = sampledText.replace(/https?:\/\/[^\s<>")]+/gi, '');
+		const compact = withoutUrls.replace(/\s+/g, '');
+		if (!compact.length) return false;
+
+		const englishMatches = compact.match(/[A-Za-z]/g);
+		const englishCount = englishMatches ? englishMatches.length : 0;
+		return (englishCount / compact.length) > 0.5;
+	}
+
+	function extractBlockTexts(el) {
+		const isListItem = el.tagName === 'LI';
+		const nonCodeClone = el.cloneNode(true);
+		if (isListItem) {
+			nonCodeClone.querySelectorAll('ul, ol').forEach(n => n.remove());
+		}
+		nonCodeClone.querySelectorAll('pre, code, script, style, noscript, svg, math, .bilingual-zh').forEach(n => n.remove());
+		const proseText = (nonCodeClone.textContent || '').replace(/https?:\/\/[^\s<>")]+/gi, '').trim();
+
+		const promptClone = el.cloneNode(true);
+		if (isListItem) {
+			promptClone.querySelectorAll('ul, ol').forEach(n => n.remove());
+		}
+		promptClone.querySelectorAll('pre, script, style, noscript, svg, .bilingual-zh').forEach(n => n.remove());
+		promptClone.querySelectorAll('code').forEach(codeEl => {
+			const txt = (codeEl.textContent || '').trim();
+			if (txt && !txt.startsWith('`')) {
+				codeEl.textContent = '`' + txt + '`';
+			}
+		});
+		const sourceText = (promptClone.textContent || '').replace(/\s+/g, ' ').trim();
+		return { proseText, sourceText };
+	}
+
+	function collectTranslatableBlocks(bodyContainer) {
+		const results = [];
+		const selector = 'p, li, blockquote, h1, h2, h3, h4, h5, h6';
+		let candidates = Array.from(bodyContainer.querySelectorAll(selector));
+
+		if (candidates.length === 0) {
+			candidates = Array.from(bodyContainer.querySelectorAll('div')).filter(div => {
+				if (div.classList.contains('bilingual-zh') || div.classList.contains('nnw-overflow') || div.classList.contains('iframeWrap')) {
+					return false;
+				}
+				return !div.querySelector('div, p, ul, ol, table, pre, blockquote');
+			});
+		}
+
+		for (let i = 0; i < candidates.length; i++) {
+			const el = candidates[i];
+			if (el.closest('pre, code, script, style, svg, .bilingual-zh')) continue;
+
+			const checkClone = el.cloneNode(true);
+			if (el.tagName === 'LI') {
+				checkClone.querySelectorAll('ul, ol').forEach(n => n.remove());
+			}
+			if (checkClone.querySelector('p, blockquote, h1, h2, h3, h4, h5, h6')) {
+				continue;
+			}
+
+			const { proseText, sourceText } = extractBlockTexts(el);
+			if (!sourceText) continue;
+
+			const letters = proseText.match(/[A-Za-z]/g);
+			if (!letters || letters.length < 2) continue;
+
+			const idx = results.length;
+			const blockKey = idx + ':' + fnv1aHash(sourceText);
+			results.push({
+				index: idx,
+				element: el,
+				sourceText,
+				blockKey
+			});
+		}
+		return results;
+	}
+
+	function ensureZhNode(block) {
+		const el = block.element;
+		if (el.tagName === 'LI') {
+			let existing = null;
+			for (let i = 0; i < el.children.length; i++) {
+				if (el.children[i].classList.contains('bilingual-zh')) {
+					existing = el.children[i];
+					break;
+				}
+			}
+			if (!existing) {
+				existing = document.createElement('div');
+				existing.className = 'bilingual-zh';
+				const nestedList = el.querySelector(':scope > ul, :scope > ol');
+				if (nestedList) {
+					el.insertBefore(existing, nestedList);
+				} else {
+					el.appendChild(existing);
+				}
+			}
+			return existing;
+		}
+
+		if (el.tagName === 'BLOCKQUOTE') {
+			let existing = null;
+			for (let i = 0; i < el.children.length; i++) {
+				if (el.children[i].classList.contains('bilingual-zh')) {
+					existing = el.children[i];
+					break;
+				}
+			}
+			if (!existing) {
+				existing = document.createElement('div');
+				existing.className = 'bilingual-zh';
+				el.appendChild(existing);
+			}
+			return existing;
+		}
+
+		const next = el.nextElementSibling;
+		if (next && next.classList.contains('bilingual-zh')) {
+			return next;
+		}
+		const zhDiv = document.createElement('div');
+		zhDiv.className = 'bilingual-zh';
+		el.insertAdjacentElement('afterend', zhDiv);
+		return zhDiv;
+	}
+
+	function removeAllZhNodes(bodyContainer) {
+		bodyContainer.querySelectorAll('.bilingual-zh').forEach(node => node.remove());
+	}
+
+	function setNodeLoading(zhDiv) {
+		zhDiv.className = 'bilingual-zh is-loading';
+		zhDiv.textContent = '';
+		const dot = document.createElement('span');
+		dot.className = 'bilingual-breath-dot';
+		dot.setAttribute('aria-hidden', 'true');
+		const label = document.createElement('span');
+		label.className = 'bilingual-loading-label';
+		label.textContent = '翻译中...';
+		zhDiv.appendChild(dot);
+		zhDiv.appendChild(label);
+	}
+
+	function setNodeTranslated(zhDiv, text) {
+		zhDiv.className = 'bilingual-zh';
+		zhDiv.textContent = text;
+	}
+
+	function setNodeError(zhDiv, reason, onRetry) {
+		zhDiv.className = 'bilingual-zh is-error';
+		zhDiv.textContent = '';
+		const msg = document.createElement('span');
+		msg.textContent = '翻译失败：' + reason;
+		const retryBtn = document.createElement('button');
+		retryBtn.type = 'button';
+		retryBtn.className = 'bilingual-retry-btn';
+		retryBtn.textContent = '点击重试';
+		retryBtn.addEventListener('click', onRetry);
+		zhDiv.appendChild(msg);
+		zhDiv.appendChild(retryBtn);
+	}
+
+	function computeArticleId(blocks) {
+		const titleLink = document.querySelector('.articleTitle a');
+		const url = titleLink ? (titleLink.getAttribute('href') || '').trim() : '';
+		const title = titleLink ? (titleLink.textContent || '').trim() : (document.title || '').trim();
+		const firstPara = blocks.length > 0 ? blocks[0].sourceText.slice(0, 160) : '';
+		const rawId = (url && url !== '#') ? (url + '|' + title) : (title + '|' + firstPara + '|' + blocks.length);
+		return fnv1aHash(rawId);
+	}
+
+	function buildCacheKey(articleId, provider, modelName) {
+		return STORAGE_KEYS.cachePrefix + articleId + ':' + provider + ':' + modelName;
+	}
+
+	function loadArticleCache(cacheKey) {
+		try {
+			const raw = safeStorage.get(cacheKey);
+			if (!raw) return null;
+			const parsed = JSON.parse(raw);
+			if (parsed && typeof parsed.items === 'object' && parsed.items !== null) {
+				return parsed.items;
+			}
+		} catch (_) {}
+		return null;
+	}
+
+	function saveParagraphToCache(cacheKey, blockKey, translatedText) {
+		const current = loadArticleCache(cacheKey) || {};
+		current[blockKey] = translatedText;
+		safeStorage.set(cacheKey, JSON.stringify({
+			updatedAt: Date.now(),
+			items: current
+		}));
+		touchCacheIndex(cacheKey);
+	}
+
+	function clearArticleCache(cacheKey) {
+		safeStorage.remove(cacheKey);
+	}
+
+	function formatErrorReason(err) {
+		if (!err) return '未知错误';
+		const msg = String(err.message || err);
+		if (msg.includes('TIMEOUT')) return '请求超时，请检查网络或代理';
+		if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed')) {
+			return '网络连接失败或跨域受限';
+		}
+		return msg.length > 68 ? (msg.slice(0, 68) + '...') : msg;
+	}
+
+	async function readErrorDetail(response) {
+		let detail = '';
+		try {
+			const text = await response.text();
+			if (text) {
+				try {
+					const json = JSON.parse(text);
+					const errObj = Array.isArray(json) ? json[0]?.error : json?.error;
+					detail = (errObj && (errObj.message || errObj.code)) || text;
+				} catch (_) {
+					detail = text;
+				}
+			}
+		} catch (_) {}
+		detail = String(detail || '').replace(/\s+/g, ' ').trim();
+		if (response.status === 401 || response.status === 403) {
+			return 'HTTP ' + response.status + ' API Key 无效或未授权';
+		}
+		if (response.status === 402) {
+			return 'HTTP 402 账户余额不足';
+		}
+		if (response.status === 404) {
+			return 'HTTP 404 接口或模型不存在' + (detail ? ' (' + detail.slice(0, 36) + ')' : '');
+		}
+		if (response.status === 429) {
+			return 'HTTP 429 请求触发限流，请稍后重试';
+		}
+		return 'HTTP ' + response.status + (detail ? ' ' + detail.slice(0, 44) : '');
+	}
+
+	async function consumeOpenAIStream(response, onDelta) {
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder('utf-8');
+		let buffer = '';
+		let fullText = '';
+
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			buffer += decoder.decode(value, { stream: true });
+			const lines = buffer.split('\n');
+			buffer = lines.pop() || '';
+
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i].trim();
+				if (!line || !line.startsWith('data:')) continue;
+				const payload = line.slice(5).trim();
+				if (payload === '[DONE]') return fullText.trim();
+				try {
+					const json = JSON.parse(payload);
+					const choice = json.choices && json.choices[0];
+					const delta = (choice && choice.delta && choice.delta.content)
+						|| (choice && choice.message && choice.message.content)
+						|| '';
+					if (delta) {
+						fullText += delta;
+						onDelta(fullText);
+					}
+				} catch (_) {}
+			}
+		}
+
+		const tail = buffer.trim();
+		if (tail.startsWith('data:')) {
+			const payload = tail.slice(5).trim();
+			if (payload && payload !== '[DONE]') {
+				try {
+					const json = JSON.parse(payload);
+					const choice = json.choices && json.choices[0];
+					const delta = (choice && choice.delta && choice.delta.content)
+						|| (choice && choice.message && choice.message.content)
+						|| '';
+					if (delta) {
+						fullText += delta;
+						onDelta(fullText);
+					}
+				} catch (_) {}
+			}
+		}
+		return fullText.trim();
+	}
+
+	async function callGeminiNativeFallback(config, sourceText, signal) {
+		const nativeEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/'
+			+ encodeURIComponent(config.model)
+			+ ':generateContent?key='
+			+ encodeURIComponent(config.apiKey);
+
+		const response = await fetch(nativeEndpoint, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+				contents: [{ role: 'user', parts: [{ text: sourceText }] }],
+				generationConfig: { temperature: 0.2 }
+			}),
+			signal
+		});
+
+		if (!response.ok) {
+			throw new Error(await readErrorDetail(response));
+		}
+		const data = await response.json();
+		const parts = data && data.candidates && data.candidates[0]
+			&& data.candidates[0].content && data.candidates[0].content.parts;
+		const text = Array.isArray(parts) ? parts.map(p => p.text || '').join('').trim() : '';
+		if (!text) throw new Error('模型返回内容为空');
+		return text;
+	}
+
+	async function requestTranslation(provider, config, sourceText, parentSignal, onStreamingUpdate) {
+		const cleanBase = config.baseUrl.replace(/\/+$/, '');
+		const endpoint = cleanBase + '/chat/completions';
+
+		const timeoutCtrl = new AbortController();
+		let timedOut = false;
+		const timer = setTimeout(() => {
+			timedOut = true;
+			timeoutCtrl.abort();
+		}, REQUEST_TIMEOUT_MS);
+
+		const onParentAbort = () => timeoutCtrl.abort();
+		if (parentSignal) {
+			if (parentSignal.aborted) {
+				clearTimeout(timer);
+				throw new DOMException('Aborted', 'AbortError');
+			}
+			parentSignal.addEventListener('abort', onParentAbort, { once: true });
+		}
+
+		try {
+			const response = await fetch(endpoint, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': 'Bearer ' + config.apiKey
+				},
+				body: JSON.stringify({
+					model: config.model,
+					messages: [
+						{ role: 'system', content: SYSTEM_PROMPT },
+						{ role: 'user', content: sourceText }
+					],
+					temperature: 0.2,
+					stream: true
+				}),
+				signal: timeoutCtrl.signal
+			});
+
+			if (!response.ok) {
+				const isGoogleHost = cleanBase.includes('generativelanguage.googleapis.com');
+				if (provider === 'gemini' && isGoogleHost && (response.status === 400 || response.status === 401 || response.status === 403)) {
+					return await callGeminiNativeFallback(config, sourceText, timeoutCtrl.signal);
+				}
+				throw new Error(await readErrorDetail(response));
+			}
+
+			const contentType = (response.headers.get('content-type') || '').toLowerCase();
+			if (contentType.includes('text/event-stream') && response.body && typeof response.body.getReader === 'function') {
+				const streamed = await consumeOpenAIStream(response, onStreamingUpdate);
+				if (!streamed) throw new Error('模型返回内容为空');
+				return streamed;
+			}
+
+			const data = await response.json();
+			const content = data && data.choices && data.choices[0]
+				&& data.choices[0].message && data.choices[0].message.content;
+			const finalStr = (content || '').trim();
+			if (!finalStr) throw new Error('模型返回内容为空');
+			return finalStr;
+		} catch (err) {
+			if (timedOut) {
+				throw new Error('TIMEOUT');
+			}
+			throw err;
+		} finally {
+			clearTimeout(timer);
+			if (parentSignal) {
+				parentSignal.removeEventListener('abort', onParentAbort);
+			}
+		}
+	}
+
+	function initBilingualTheme() {
+		const bodyContainer = document.getElementById('bodyContainer');
+		const toolbar = document.getElementById('bilingualToolbar');
+		if (!bodyContainer || !toolbar) return;
+
+		if (!isEnglishDominant(bodyContainer)) {
+			return;
+		}
+
+		const blocks = collectTranslatableBlocks(bodyContainer);
+		if (blocks.length === 0) return;
+
+		toolbar.classList.add('is-visible');
+
+		const modelSelect = document.getElementById('biModelSelect');
+		const translateBtn = document.getElementById('biTranslateBtn');
+		const toggleBtn = document.getElementById('biToggleBtn');
+		const settingsBtn = document.getElementById('biSettingsBtn');
+		const modal = document.getElementById('biSettingsModal');
+		const modalCloseBtn = document.getElementById('biModalCloseBtn');
+		const cancelSettingsBtn = document.getElementById('biCancelSettingsBtn');
+		const saveSettingsBtn = document.getElementById('biSaveSettingsBtn');
+		const resetDefaultBtn = document.getElementById('biResetDefaultBtn');
+
+		const dsBaseInput = document.getElementById('biDsBaseUrl');
+		const dsKeyInput = document.getElementById('biDsApiKey');
+		const dsModelInput = document.getElementById('biDsModel');
+		const gmBaseInput = document.getElementById('biGmBaseUrl');
+		const gmKeyInput = document.getElementById('biGmApiKey');
+		const gmModelInput = document.getElementById('biGmModel');
+
+		const articleId = computeArticleId(blocks);
+		let activeProvider = getActiveProvider();
+		modelSelect.value = activeProvider;
+
+		let activeRunId = 0;
+		let activeAbortCtrl = null;
+		let isTranslating = false;
+		let hasTranslatedInSession = false;
+
+		function cancelActiveRun() {
+			activeRunId += 1;
+			if (activeAbortCtrl) {
+				activeAbortCtrl.abort();
+				activeAbortCtrl = null;
+			}
+			isTranslating = false;
+		}
+
+		function setTranslationsHidden(hidden) {
+			if (hidden) {
+				document.body.classList.add('bilingual-hidden');
+				toggleBtn.textContent = '显示译文';
+			} else {
+				document.body.classList.remove('bilingual-hidden');
+				toggleBtn.textContent = '隐藏译文';
+			}
+		}
+
+		function syncButtonsState() {
+			const hasNodes = bodyContainer.querySelector('.bilingual-zh') !== null;
+			toggleBtn.disabled = !hasNodes;
+			if (!hasNodes) {
+				document.body.classList.remove('bilingual-hidden');
+				toggleBtn.textContent = '隐藏译文';
+			}
+			if (!isTranslating) {
+				translateBtn.disabled = false;
+				translateBtn.textContent = hasNodes ? '重新翻译' : '翻译全文';
+			}
+		}
+
+		function renderCachedIfAvailable(provider) {
+			const cfg = getProviderConfig(provider);
+			const cacheKey = buildCacheKey(articleId, provider, cfg.model);
+			const cachedItems = loadArticleCache(cacheKey);
+			if (!cachedItems) return 0;
+
+			let hitCount = 0;
+			for (let i = 0; i < blocks.length; i++) {
+				const blk = blocks[i];
+				if (cachedItems[blk.blockKey]) {
+					const zhDiv = ensureZhNode(blk);
+					setNodeTranslated(zhDiv, cachedItems[blk.blockKey]);
+					hitCount += 1;
+				}
+			}
+			if (hitCount > 0) {
+				touchCacheIndex(cacheKey);
+			}
+			return hitCount;
+		}
+
+		async function translateBlockItem(blk, provider, cfg, cacheKey, signal, runId, onDone) {
+			const zhDiv = ensureZhNode(blk);
+			setNodeLoading(zhDiv);
+
+			try {
+				const translated = await requestTranslation(
+					provider,
+					cfg,
+					blk.sourceText,
+					signal,
+					partialText => {
+						if (runId !== activeRunId) return;
+						setNodeTranslated(zhDiv, partialText);
+					}
+				);
+
+				if (runId !== activeRunId) return;
+				setNodeTranslated(zhDiv, translated);
+				saveParagraphToCache(cacheKey, blk.blockKey, translated);
+			} catch (err) {
+				if ((err && err.name === 'AbortError') || (signal && signal.aborted) || runId !== activeRunId) {
+					return;
+				}
+				const reason = formatErrorReason(err);
+				setNodeError(zhDiv, reason, () => {
+					const retryProvider = getActiveProvider();
+					const retryCfg = getProviderConfig(retryProvider);
+					const retryCacheKey = buildCacheKey(articleId, retryProvider, retryCfg.model);
+					setTranslationsHidden(false);
+					translateBlockItem(blk, retryProvider, retryCfg, retryCacheKey, null, activeRunId, null);
+				});
+			} finally {
+				if (onDone && runId === activeRunId) {
+					onDone();
+				}
+			}
+		}
+
+		async function runFullTranslation(forceRefresh) {
+			cancelActiveRun();
+			const runId = activeRunId;
+			const abortCtrl = new AbortController();
+			activeAbortCtrl = abortCtrl;
+			isTranslating = true;
+			hasTranslatedInSession = true;
+
+			setTranslationsHidden(false);
+
+			const provider = getActiveProvider();
+			const cfg = getProviderConfig(provider);
+			if (!cfg.apiKey) {
+				isTranslating = false;
+				activeAbortCtrl = null;
+				openSettingsModal(provider);
+				return;
+			}
+			const cacheKey = buildCacheKey(articleId, provider, cfg.model);
+
+			if (forceRefresh) {
+				clearArticleCache(cacheKey);
+			}
+
+			const cachedItems = forceRefresh ? {} : (loadArticleCache(cacheKey) || {});
+			const pendingBlocks = [];
+			let completedCount = 0;
+
+			for (let i = 0; i < blocks.length; i++) {
+				const blk = blocks[i];
+				const zhDiv = ensureZhNode(blk);
+				if (!forceRefresh && cachedItems[blk.blockKey]) {
+					setNodeTranslated(zhDiv, cachedItems[blk.blockKey]);
+					completedCount += 1;
+				} else {
+					setNodeLoading(zhDiv);
+					pendingBlocks.push(blk);
+				}
+			}
+
+			toggleBtn.disabled = false;
+
+			if (pendingBlocks.length === 0) {
+				isTranslating = false;
+				activeAbortCtrl = null;
+				syncButtonsState();
+				return;
+			}
+
+			const updateProgressLabel = () => {
+				if (runId !== activeRunId) return;
+				translateBtn.disabled = true;
+				translateBtn.textContent = '翻译中 (' + completedCount + '/' + blocks.length + ')';
+			};
+			updateProgressLabel();
+
+			let cursor = 0;
+			const workerCount = Math.min(CONCURRENCY_LIMIT, pendingBlocks.length);
+			const workers = Array.from({ length: workerCount }, async () => {
+				while (cursor < pendingBlocks.length) {
+					if (abortCtrl.signal.aborted || runId !== activeRunId) return;
+					const blk = pendingBlocks[cursor++];
+					await translateBlockItem(
+						blk,
+						provider,
+						cfg,
+						cacheKey,
+						abortCtrl.signal,
+						runId,
+						() => {
+							completedCount += 1;
+							updateProgressLabel();
+						}
+					);
+				}
+			});
+
+			await Promise.all(workers);
+
+			if (runId === activeRunId) {
+				isTranslating = false;
+				activeAbortCtrl = null;
+				syncButtonsState();
+			}
+		}
+
+		// Auto-render cached translations on article open if available
+		const initialHits = renderCachedIfAvailable(activeProvider);
+		syncButtonsState();
+		if (initialHits > 0 && initialHits < blocks.length) {
+			translateBtn.textContent = '继续翻译';
+		}
+
+		// 1. Model Switch Dropdown
+		modelSelect.addEventListener('change', () => {
+			activeProvider = setActiveProvider(modelSelect.value);
+			cancelActiveRun();
+			removeAllZhNodes(bodyContainer);
+
+			const hits = renderCachedIfAvailable(activeProvider);
+			if (hits === blocks.length) {
+				setTranslationsHidden(false);
+				syncButtonsState();
+			} else if (hasTranslatedInSession) {
+				runFullTranslation(false);
+			} else {
+				syncButtonsState();
+				if (hits > 0 && hits < blocks.length) {
+					translateBtn.textContent = '继续翻译';
+				}
+			}
+		});
+
+		// 2. Translate / Re-translate Full Article Button
+		translateBtn.addEventListener('click', () => {
+			if (isTranslating) return;
+			const cfg = getProviderConfig(activeProvider);
+			const cacheKey = buildCacheKey(articleId, activeProvider, cfg.model);
+			const cached = loadArticleCache(cacheKey);
+			const allCached = cached && blocks.every(b => Boolean(cached[b.blockKey]));
+			const hasDomTranslations = bodyContainer.querySelector('.bilingual-zh') !== null;
+			const shouldForce = Boolean(allCached && hasDomTranslations);
+			runFullTranslation(shouldForce);
+		});
+
+		// 3. Hide / Show Translations Button
+		toggleBtn.addEventListener('click', () => {
+			const isHidden = document.body.classList.contains('bilingual-hidden');
+			setTranslationsHidden(!isHidden);
+		});
+
+		// 4. API Settings Modal
+		function openSettingsModal(focusProvider) {
+			const dsCfg = getProviderConfig('deepseek');
+			const gmCfg = getProviderConfig('gemini');
+			dsBaseInput.value = dsCfg.baseUrl;
+			dsKeyInput.value = dsCfg.apiKey;
+			dsModelInput.value = dsCfg.model;
+			gmBaseInput.value = gmCfg.baseUrl;
+			gmKeyInput.value = gmCfg.apiKey;
+			gmModelInput.value = gmCfg.model;
+			modal.classList.add('is-open');
+			if (focusProvider === 'gemini') {
+				setTimeout(() => gmKeyInput.focus(), 30);
+			} else if (focusProvider === 'deepseek') {
+				setTimeout(() => dsKeyInput.focus(), 30);
+			}
+		}
+
+		function closeSettingsModal() {
+			modal.classList.remove('is-open');
+			modal.querySelectorAll('.bilingual-key-toggle').forEach(btn => {
+				const input = document.getElementById(btn.getAttribute('data-target'));
+				if (input) input.type = 'password';
+				btn.textContent = '显示';
+			});
+		}
+
+		settingsBtn.addEventListener('click', () => openSettingsModal(activeProvider));
+		modalCloseBtn.addEventListener('click', closeSettingsModal);
+		cancelSettingsBtn.addEventListener('click', closeSettingsModal);
+
+		modal.addEventListener('click', e => {
+			if (e.target === modal) closeSettingsModal();
+		});
+
+		modal.querySelectorAll('.bilingual-key-toggle').forEach(btn => {
+			btn.addEventListener('click', () => {
+				const targetId = btn.getAttribute('data-target');
+				const input = document.getElementById(targetId);
+				if (!input) return;
+				if (input.type === 'password') {
+					input.type = 'text';
+					btn.textContent = '隐藏';
+				} else {
+					input.type = 'password';
+					btn.textContent = '显示';
+				}
+			});
+		});
+
+		resetDefaultBtn.addEventListener('click', () => {
+			dsBaseInput.value = DEFAULT_CONFIGS.deepseek.baseUrl;
+			dsKeyInput.value = DEFAULT_CONFIGS.deepseek.apiKey;
+			dsModelInput.value = DEFAULT_CONFIGS.deepseek.model;
+			gmBaseInput.value = DEFAULT_CONFIGS.gemini.baseUrl;
+			gmKeyInput.value = DEFAULT_CONFIGS.gemini.apiKey;
+			gmModelInput.value = DEFAULT_CONFIGS.gemini.model;
+		});
+
+		saveSettingsBtn.addEventListener('click', () => {
+			saveProviderConfig('deepseek', {
+				baseUrl: dsBaseInput.value,
+				apiKey: dsKeyInput.value,
+				model: dsModelInput.value
+			});
+			saveProviderConfig('gemini', {
+				baseUrl: gmBaseInput.value,
+				apiKey: gmKeyInput.value,
+				model: gmModelInput.value
+			});
+			closeSettingsModal();
+
+			// Refresh cache state in case model name was changed
+			if (!isTranslating) {
+				removeAllZhNodes(bodyContainer);
+				renderCachedIfAvailable(activeProvider);
+				syncButtonsState();
+			}
+		});
+
+		// Prevent single-key RSS shortcuts from hijacking input typing inside modal
+		modal.addEventListener('keydown', e => {
+			if (e.key === 'Escape') {
+				e.preventDefault();
+				e.stopPropagation();
+				closeSettingsModal();
+				return;
+			}
+			if (!e.metaKey && !e.ctrlKey) {
+				e.stopPropagation();
+			}
+		});
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', () => setTimeout(initBilingualTheme, 0));
+	} else {
+		setTimeout(initBilingualTheme, 0);
+	}
+})();
+</script>

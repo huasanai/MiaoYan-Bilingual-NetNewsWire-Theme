@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Name</key>
+	<string>MiaoYan Bilingual</string>
+	<key>ThemeIdentifier</key>
+	<string>com.tw93.themes.miaoyan.bilingual</string>
+	<key>CreatorHomePage</key>
+	<string>https://github.com/huasanai/MiaoYan-Bilingual-NetNewsWire-Theme</string>
+	<key>CreatorName</key>
+	<string>Tw93 &amp; HuaSan</string>
+	<key>Version</key>
+	<integer>1</integer>
+</dict>
+</plist>
