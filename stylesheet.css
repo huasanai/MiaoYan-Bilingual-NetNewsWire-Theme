@@ -1486,3 +1486,59 @@ body.bilingual-hidden .bilingual-zh {
 	gap: 8px;
 }
 
+
+#biEditModel,
+#biDefaultModel {
+	width: 100%;
+	min-width: 0;
+}
+
+#biAddModel {
+	flex-shrink: 0;
+}
+
+#biModelSelect {
+	max-width: min(18em, 68vw);
+}
+
+#biControls[hidden], #biKeyHint[hidden], #biRemoteModels[hidden] {
+	display: none;
+}
+
+#biBarMode, #biRemoteModels {
+	width: 100%;
+}
+
+#biRemoteModels {
+	margin-top: 6px;
+}
+
+#biFetchModels {
+	flex-shrink: 0;
+}
+
+#biModelHelp {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 17px;
+	height: 17px;
+	padding: 0;
+	margin-bottom: 4px;
+	border: 1px solid var(--bi-control-border);
+	border-radius: 50%;
+	background: var(--bi-control-bg);
+	color: var(--bi-control-text);
+	cursor: pointer;
+}
+
+.bi-model-note {
+	display: block;
+	margin: 5px 0;
+	font-size: 12px;
+	color: var(--bi-muted-text);
+}
+
+.bi-model-note:empty {
+	display: none;
+}
