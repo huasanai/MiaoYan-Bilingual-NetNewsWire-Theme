@@ -41,17 +41,18 @@ body: The body of the article.
 			<a href="[[feed_link]]">[[feed_link_title]]</a>
 			<span class="separator">·</span>
 			<time datetime="[[datetime_short]]">[[datetime_short]]</time>
+			<button type="button" id="biExpand" aria-controls="bilingualToolbar" aria-expanded="false" hidden>显示翻译栏</button>
 		</div>
 	</div>
 
-	<div id="bilingualToolbar" class="bilingual-toolbar" role="region" aria-label="双语对照翻译控制栏">
+	<div id="bilingualToolbar" class="bilingual-toolbar" hidden role="region" aria-label="双语对照翻译控制栏">
 		<div id="biControls" class="bilingual-toolbar-left">
 			<select id="biModelSelect" class="bilingual-select" aria-label="选择翻译模型"></select>
 			<button type="button" id="biTranslateBtn" class="bilingual-btn bilingual-btn-primary">翻译全文</button>
 			<button type="button" id="biToggleBtn" class="bilingual-btn" disabled>隐藏译文</button>
 		</div>
 		<div class="bilingual-toolbar-right">
-			<button type="button" id="biExpand" class="bilingual-btn" aria-controls="biControls">显示翻译栏</button>
+			<button type="button" id="biCollapse" class="bilingual-btn" aria-controls="bilingualToolbar" aria-expanded="true">收起翻译栏</button>
 			<button type="button" id="biSettingsBtn" class="bilingual-btn">API 设置</button>
 		</div>
 	</div>
@@ -687,8 +688,6 @@ body: The body of the article.
 
 		const blocks = collectTranslatableBlocks(bodyContainer);
 		const english = blocks.length > 0 && isEnglishDominant(bodyContainer);
-		toolbar.classList.add('is-visible');
-
 		const modelSelect = document.getElementById('biModelSelect');
 		const translateBtn = document.getElementById('biTranslateBtn');
 		const toggleBtn = document.getElementById('biToggleBtn');
@@ -712,15 +711,14 @@ body: The body of the article.
 		let settings = loadSettings();
 		let activeProvider = settings.defaultId;
 		let draft;
-		const controls = document.getElementById('biControls');
+		const collapse = document.getElementById('biCollapse');
 		const expand = document.getElementById('biExpand');
 		const barMode = document.getElementById('biBarMode');
 		settings.barMode = settings.barMode || 'auto';
 
 		function setExpanded(expanded) {
-			controls.hidden = !expanded;
-			expand.textContent = expanded ? '收起翻译栏' : '显示翻译栏';
-			expand.setAttribute('aria-expanded', String(expanded));
+			toolbar.hidden = !expanded;
+			expand.hidden = expanded;
 		}
 
 		function applyBarMode() {
@@ -728,7 +726,14 @@ body: The body of the article.
 		}
 
 		applyBarMode();
-		expand.addEventListener('click', () => setExpanded(controls.hidden));
+		expand.addEventListener('click', () => {
+			setExpanded(true);
+			collapse.focus();
+		});
+		collapse.addEventListener('click', () => {
+			setExpanded(false);
+			expand.focus();
+		});
 
 		fillModelSelect(modelSelect, settings.profiles, activeProvider);
 
@@ -1069,7 +1074,7 @@ body: The body of the article.
 			fields.apiKey.type = 'password';
 			fields.apiKey.value = '';
 			draft = null;
-			settingsBtn.focus();
+			(toolbar.hidden ? expand : settingsBtn).focus();
 		}
 
 		settingsBtn.addEventListener('click', () => openSettingsModal(activeProvider));
